@@ -1,0 +1,240 @@
+{
+  "name": "UN/FOLD | Entrance check-in",
+  "nodes": [
+    {
+      "name": "Scan webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "unfold-check-in",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "eb81385e-dac8-44f9-b520-432c1a1c0bdb",
+      "webhookId": "2154fa28-37cd-43d9-a615-5d0c0f742591"
+    },
+    {
+      "name": "Read registrations",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        240,
+        0
+      ],
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Form Responses 1"
+        },
+        "options": {}
+      },
+      "id": "6fa47611-b9dc-4733-b8e1-6c27783bdb88",
+      "alwaysOutputData": true
+    },
+    {
+      "name": "Validate scan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        0
+      ],
+      "parameters": {
+        "jsCode": "const code = $('Scan webhook').first().json.body?.code;\nconst reply = (status, fields = {}) => [{ json: { status, ...fields } }];\nif (typeof code !== 'string' || !/^UNF-[A-F0-9]{16}$/.test(code)) {\n  return reply('not_found');\n}\nconst matches = $input.all().map(({ json }) => json)\n  .filter(row => String(row['Ticket Code'] ?? '').trim().toUpperCase() === code);\nif (!matches.length) return reply('not_found');\nif (matches.length > 1) return reply('duplicate_code');\nconst row = matches[0];\nconst name = [row['First Name'], row['Last Name']].map(value => String(value ?? '').trim())\n  .filter(Boolean).join(' ');\nif (String(row['Check-in Status'] ?? '').trim().toLowerCase() === 'present') {\n  return reply('already_present', { name, checkedInAt: row['Checked In At'] });\n}\nif (String(row['Payment Status'] ?? '').trim().toLowerCase() !== 'paid') {\n  return reply('unpaid');\n}\nconst rowNumber = Number(row.row_number);\nif (!Number.isInteger(rowNumber) || rowNumber < 2) throw Error('Missing response row number');\nreturn reply('present', { name, rowNumber, checkedInAt: new Date().toISOString() });"
+      },
+      "id": "ae7b8b26-ae59-4810-931f-8fbb5a2c77c0"
+    },
+    {
+      "name": "First valid scan",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        0
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d9c12ef8-a77a-4697-a8ba-dfb76873ab98",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "present",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d91b7b1f-75f3-487d-843b-6d5c3853a13e"
+    },
+    {
+      "name": "Mark Present",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        960,
+        -100
+      ],
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "REPLACE_WITH_SPREADSHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Form Responses 1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": "={{ $json.rowNumber }}",
+            "Check-in Status": "Present",
+            "Checked In At": "={{ $json.checkedInAt }}"
+          },
+          "matchingColumns": [
+            "row_number"
+          ],
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "display": true
+            },
+            {
+              "id": "Check-in Status",
+              "displayName": "Check-in Status",
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "display": true
+            },
+            {
+              "id": "Checked In At",
+              "displayName": "Checked In At",
+              "type": "string",
+              "canBeUsedToMatch": false,
+              "display": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a22f29a3-d058-4cee-b2c5-d46fd20aec96",
+      "alwaysOutputData": true
+    },
+    {
+      "name": "Return check-in result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1200,
+        0
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({status: $('Validate scan').first().json.status, name: $('Validate scan').first().json.name, checkedInAt: $('Validate scan').first().json.checkedInAt}) }}",
+        "options": {}
+      },
+      "id": "367f9190-357c-4713-b3f4-c87875be8921"
+    }
+  ],
+  "connections": {
+    "Scan webhook": {
+      "main": [
+        [
+          {
+            "node": "Read registrations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read registrations": {
+      "main": [
+        [
+          {
+            "node": "Validate scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate scan": {
+      "main": [
+        [
+          {
+            "node": "First valid scan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "First valid scan": {
+      "main": [
+        [
+          {
+            "node": "Mark Present",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return check-in result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Present": {
+      "main": [
+        [
+          {
+            "node": "Return check-in result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 30,
+    "timezone": "Asia/Manila"
+  }
+}

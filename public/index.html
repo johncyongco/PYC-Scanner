@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#101210">
+<title>UN/FOLD Entrance Check-in</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<style>
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  color: #f8f0e2;
+  background: #101210;
+  --muted: #c5b8a7;
+  --line: #4e4237;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 52% 0%, #44281f 0%, #211916 39%, #101210 75%);
+}
+main { max-width: 860px; margin: auto; padding: clamp(14px, 4vw, 38px); }
+.brand {
+  margin: 0 0 18px;
+  overflow: hidden;
+  border: 1px solid #695245;
+  border-radius: 16px;
+  background: #111413;
+}
+.brand img { display: block; width: 100%; height: auto; }
+.panel {
+  background: #1c1a17;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: clamp(16px, 3vw, 26px);
+  box-shadow: 0 26px 70px #0004;
+}
+.panel header { margin-bottom: 18px; }
+h1 {
+  margin: 0 0 5px;
+  font: 400 clamp(30px, 5vw, 43px)/1.05 Georgia, serif;
+  letter-spacing: -.035em;
+}
+p { margin: 0; }
+.panel header p { color: var(--muted); font-size: 14px; }
+.station { display: grid; gap: 14px; }
+.view {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  aspect-ratio: 16/11;
+  border: 1px solid #5f4d40;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at 50% 55%, #35251e, #171715 76%);
+}
+video { display: block; width: 100%; height: 100%; object-fit: cover; }
+.guide {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(51%, 185px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 12px;
+  border: 2px solid #f2d7ab;
+  box-shadow: 0 0 0 22rem #0b0a0855;
+  pointer-events: none;
+}
+.camera-caption {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #f8e3c7;
+  background: #1d1916e8;
+  border: 1px solid #82654f;
+  border-radius: 24px;
+  padding: 5px 11px;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.controls { display: flex; flex-direction: column; gap: 12px; }
+button {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid #ed9a7e;
+  border-radius: 10px;
+  background: #b74632;
+  color: #fff8ed;
+  font: 700 15px system-ui, sans-serif;
+  cursor: pointer;
+}
+button:hover:enabled { background: #a43b29; }
+button:focus-visible { outline: 3px solid #f5d49f; outline-offset: 3px; }
+button:disabled { opacity: .64; cursor: default; }
+.status {
+  display: grid;
+  grid-template-columns: 9px 1fr;
+  gap: 11px;
+  align-items: start;
+  min-height: 74px;
+  border: 1px solid #5c4d42;
+  border-radius: 10px;
+  padding: 14px;
+  background: #28221d;
+  --signal: #e7bc87;
+}
+.status[data-state=present] { background: #182d22; border-color: #467a58; --signal: #8fdaa8; }
+.status[data-state=already_present] { background: #34291c; border-color: #8b683c; --signal: #ffc975; }
+.status[data-state=error] { background: #382420; border-color: #945e52; --signal: #ff9b88; }
+.signal { width: 9px; height: 9px; margin-top: 6px; border-radius: 50%; background: var(--signal); }
+.status strong { display: block; color: var(--signal); }
+.status p { margin-top: 4px; color: #eadfce; font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+@media (min-width: 660px) {
+  .station { grid-template-columns: minmax(0, 1.32fr) minmax(0, 1fr); gap: 18px; }
+  .controls { justify-content: center; }
+}
+</style>
+<script defer src="/qr.js"></script>
+<script defer src="/app.js"></script>
+</head>
+<body>
+<main>
+  <figure class="brand">
+    <img src="/unfold-header.webp" width="1600" height="400" alt="Raise Worship presents UN/FOLD — from I to One">
+  </figure>
+  <section class="panel" aria-labelledby="checkin-title">
+    <header>
+      <h1 id="checkin-title">Entrance check-in</h1>
+      <p>Scan the QR on an attendee’s UN/FOLD ticket.</p>
+    </header>
+    <div class="station">
+      <div class="view">
+        <video id="camera" autoplay muted playsinline aria-label="QR scanner camera"></video>
+        <div class="guide" aria-hidden="true"></div>
+        <span class="camera-caption" id="camera-caption">Camera off</span>
+      </div>
+      <div class="controls">
+        <button id="start" type="button">Start camera</button>
+        <div class="status" id="result" role="status" aria-live="polite" aria-atomic="true" data-state="ready">
+          <span class="signal" aria-hidden="true"></span>
+          <div><strong id="title">Ready to scan</strong><p id="detail">Open the camera to check in a guest.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

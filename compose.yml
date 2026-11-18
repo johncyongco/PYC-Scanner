@@ -1,0 +1,18 @@
+services:
+  unfold-scanner:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "${TRAEFIK_NETWORK:-traefik}"
+      traefik.http.routers.unfold-scanner.rule: "Host(`${SCANNER_HOST:?Set SCANNER_HOST}`)"
+      traefik.http.routers.unfold-scanner.entrypoints: websecure
+      traefik.http.routers.unfold-scanner.tls: "true"
+      traefik.http.routers.unfold-scanner.tls.certresolver: letsencrypt
+      traefik.http.services.unfold-scanner.loadbalancer.server.port: "8080"
+    networks: [proxy]
+networks:
+  proxy:
+    external: true
+    name: "${TRAEFIK_NETWORK:-traefik}"
